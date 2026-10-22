@@ -26,6 +26,13 @@ npm run dev
 
 Verifica que responda: http://localhost:3000/api/health → `{"ok":true}`
 
+Usuarios de ejemplo (clave `Clave123!`): `admin@demo.com` (ADMIN), `ana@demo.com`, `luis@demo.com`, `maria@demo.com`.
+
+## API y pruebas
+- Documentación de endpoints: [docs/API.md](docs/API.md)
+- Pruebas automatizadas: `npm test` dentro de `backend/`. Usa una base aparte (`gestor_tareas_test`) que se reinicia en cada corrida; no toca tus datos.
+- Pruebas manuales: abre `backend/api.http` con la extensión REST Client de VS Code.
+
 ## Flujo de trabajo con Git
 - `main`: rama protegida, solo se entra por Pull Request.
 - `develop`: rama de integración.

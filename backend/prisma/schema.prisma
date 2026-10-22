@@ -12,6 +12,29 @@ enum Rol {
   MIEMBRO
 }
 
+enum RolProyecto {
+  ADMIN
+  MIEMBRO
+}
+
+enum Prioridad {
+  ALTA
+  MEDIA
+  BAJA
+}
+
+enum TipoTarea {
+  TAREA
+  BUG
+}
+
+enum EstadoColumna {
+  POR_HACER
+  EN_PROGRESO
+  EN_REVISION
+  COMPLETADO
+}
+
 model Usuario {
   id       Int      @id @default(autoincrement())
   nombre   String
@@ -19,4 +42,147 @@ model Usuario {
   password String
   rol      Rol      @default(MIEMBRO)
   creadoEn DateTime @default(now())
+
+  resetToken       String?
+  resetTokenExpira DateTime?
+
+  proyectosCreados Proyecto[]        @relation("CreadorProyecto")
+  membresias       ProyectoMiembro[]
+  tareasCreadas    Tarea[]           @relation("CreadorTarea")
+  tareasAsignadas  Tarea[]           @relation("ResponsableTarea")
+  comentarios      Comentario[]
+  bitacora         Bitacora[]
+}
+
+model Proyecto {
+  id          Int      @id @default(autoincrement())
+  nombre      String
+  descripcion String?  @db.Text
+  creadoEn    DateTime @default(now())
+  creadorId   Int
+
+  creador   Usuario           @relation("CreadorProyecto", fields: [creadorId], references: [id])
+  miembros  ProyectoMiembro[]
+  tableros  Tablero[]
+  etiquetas Etiqueta[]
+}
+
+model ProyectoMiembro {
+  proyectoId Int
+  usuarioId  Int
+  rol        RolProyecto @default(MIEMBRO)
+
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([proyectoId, usuarioId])
+}
+
+model Tablero {
+  id         Int      @id @default(autoincrement())
+  nombre     String
+  proyectoId Int
+  creadoEn   DateTime @default(now())
+
+  proyecto Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  columnas Columna[]
+}
+
+model Columna {
+  id        Int           @id @default(autoincrement())
+  nombre    String
+  tipo      EstadoColumna
+  orden     Int
+  tableroId Int
+
+  tablero Tablero @relation(fields: [tableroId], references: [id], onDelete: Cascade)
+  tareas  Tarea[]
+}
+
+model Tarea {
+  id            Int       @id @default(autoincrement())
+  titulo        String
+  descripcion   String?   @db.Text
+  prioridad     Prioridad @default(MEDIA)
+  tipo          TipoTarea @default(TAREA)
+  orden         Int       @default(0)
+  fechaCreacion DateTime  @default(now())
+  fechaInicio   DateTime?
+  fechaLimite   DateTime?
+  fechaCierre   DateTime?
+  columnaId     Int
+  creadorId     Int
+  responsableId Int?
+
+  columna     Columna         @relation(fields: [columnaId], references: [id])
+  creador     Usuario         @relation("CreadorTarea", fields: [creadorId], references: [id])
+  responsable Usuario?        @relation("ResponsableTarea", fields: [responsableId], references: [id])
+  subtareas   Subtarea[]
+  etiquetas   TareaEtiqueta[]
+  comentarios Comentario[]
+  bitacora    Bitacora[]
+}
+
+model Subtarea {
+  id         Int     @id @default(autoincrement())
+  titulo     String
+  completada Boolean @default(false)
+  tareaId    Int
+
+  tarea     Tarea           @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  checklist ChecklistItem[]
+}
+
+model ChecklistItem {
+  id         Int     @id @default(autoincrement())
+  texto      String
+  completado Boolean @default(false)
+  subtareaId Int
+
+  subtarea Subtarea @relation(fields: [subtareaId], references: [id], onDelete: Cascade)
+}
+
+model Etiqueta {
+  id         Int    @id @default(autoincrement())
+  nombre     String
+  color      String @default("#6366f1")
+  proyectoId Int
+
+  proyecto Proyecto        @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tareas   TareaEtiqueta[]
+}
+
+model TareaEtiqueta {
+  tareaId    Int
+  etiquetaId Int
+
+  tarea    Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  etiqueta Etiqueta @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+
+  @@id([tareaId, etiquetaId])
+}
+
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  texto     String   @db.Text
+  creadoEn  DateTime @default(now())
+  tareaId   Int
+  usuarioId Int
+
+  tarea   Tarea   @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+model Bitacora {
+  id             Int      @id @default(autoincrement())
+  accion         String
+  detalle        String?  @db.Text
+  estadoAnterior String?
+  estadoNuevo    String?
+  fecha          DateTime @default(now())
+  tareaId        Int
+  usuarioId      Int
+
+  tarea   Tarea   @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
 }
