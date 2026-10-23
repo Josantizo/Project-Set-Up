@@ -1,0 +1,306 @@
+# Peticiones de prueba manual para la API.
+# Requiere la extensión "REST Client" de VS Code (humao.rest-client).
+# Con el servidor levantado (npm run dev), haz clic en "Send Request" sobre cada petición.
+# Ejecuta primero los dos logins: el resto usa sus tokens.
+# Los IDs corresponden al seed (proyecto 1, tablero 1, columnas 1-4, tareas 1-6).
+
+@api = http://localhost:3000/api
+@ana = {{loginAna.response.body.token}}
+@admin = {{loginAdmin.response.body.token}}
+
+### Salud
+GET {{api}}/health
+
+############################ AUTENTICACIÓN ############################
+
+# @name loginAna
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "ana@demo.com", "password": "Clave123!" }
+
+###
+# @name loginAdmin
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "admin@demo.com", "password": "Clave123!" }
+
+### Login incorrecto (401)
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "ana@demo.com", "password": "Mala1234" }
+
+### Registro con contraseña débil (400)
+POST {{api}}/auth/registro
+Content-Type: application/json
+
+{ "nombre": "Prueba", "email": "prueba@demo.com", "password": "123" }
+
+### Perfil
+GET {{api}}/auth/perfil
+Authorization: Bearer {{ana}}
+
+### Olvidé mi contraseña (el token se imprime en la consola del servidor)
+POST {{api}}/auth/olvide-contrasena
+Content-Type: application/json
+
+{ "email": "ana@demo.com" }
+
+############################ PROYECTOS ############################
+
+### Mis proyectos
+GET {{api}}/proyectos
+Authorization: Bearer {{ana}}
+
+### Detalle del proyecto (miembros, tableros, etiquetas)
+GET {{api}}/proyectos/1
+Authorization: Bearer {{ana}}
+
+### Un MIEMBRO no puede crear proyectos (403)
+POST {{api}}/proyectos
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "nombre": "No debería crearse" }
+
+###
+# @name nuevoProyecto
+POST {{api}}/proyectos
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "nombre": "Proyecto demo", "descripcion": "Creado desde api.http" }
+
+### Dashboard
+GET {{api}}/proyectos/1/dashboard
+Authorization: Bearer {{ana}}
+
+############################ MIEMBROS ############################
+
+### Listar miembros
+GET {{api}}/proyectos/1/miembros
+Authorization: Bearer {{ana}}
+
+### Agregar a ana al proyecto nuevo
+POST {{api}}/proyectos/{{nuevoProyecto.response.body.id}}/miembros
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "email": "ana@demo.com", "rol": "MIEMBRO" }
+
+### Cambiar rol
+PUT {{api}}/proyectos/{{nuevoProyecto.response.body.id}}/miembros/2
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "rol": "ADMIN" }
+
+### Quitar miembro
+DELETE {{api}}/proyectos/{{nuevoProyecto.response.body.id}}/miembros/2
+Authorization: Bearer {{admin}}
+
+############################ TABLEROS ############################
+
+###
+# @name nuevoTablero
+POST {{api}}/proyectos/{{nuevoProyecto.response.body.id}}/tableros
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "nombre": "Sprint demo" }
+
+### Tableros del proyecto
+GET {{api}}/proyectos/1/tableros
+Authorization: Bearer {{ana}}
+
+### Vista Kanban (columnas con sus tareas)
+GET {{api}}/tableros/1
+Authorization: Bearer {{ana}}
+
+### Renombrar tablero
+PUT {{api}}/tableros/{{nuevoTablero.response.body.id}}
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "nombre": "Sprint demo (renombrado)" }
+
+############################ ETIQUETAS ############################
+
+### Listar etiquetas
+GET {{api}}/proyectos/1/etiquetas
+Authorization: Bearer {{ana}}
+
+### Crear etiqueta
+POST {{api}}/proyectos/1/etiquetas
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "nombre": "QA", "color": "#f59e0b" }
+
+############################ TAREAS ############################
+
+### Tareas del tablero 1
+GET {{api}}/tareas?tableroId=1
+Authorization: Bearer {{ana}}
+
+###
+# @name nuevaTarea
+POST {{api}}/tareas
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{
+  "tableroId": 1,
+  "titulo": "Tarea creada desde api.http",
+  "descripcion": "Prueba manual",
+  "prioridad": "ALTA",
+  "tipo": "TAREA",
+  "etiquetas": [1],
+  "fechaInicio": "2026-10-22",
+  "fechaLimite": "2026-11-15"
+}
+
+### Ver tarea (progreso, vencida, subtareas)
+GET {{api}}/tareas/{{nuevaTarea.response.body.id}}
+Authorization: Bearer {{ana}}
+
+### Validación: fecha límite antes del inicio (400)
+POST {{api}}/tareas
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "tableroId": 1, "titulo": "x", "fechaInicio": "2026-11-10", "fechaLimite": "2026-11-01" }
+
+############################ TRANSICIONES ############################
+# Columnas del tablero 1: 1 POR_HACER, 2 EN_PROGRESO, 3 EN_REVISION, 4 COMPLETADO
+
+### ERROR: mover sin responsable (400)
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 2 }
+
+### ERROR: saltar de POR_HACER a COMPLETADO (400)
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 4 }
+
+### Asignar responsable
+PUT {{api}}/tareas/{{nuevaTarea.response.body.id}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "responsableId": 2 }
+
+### POR_HACER → EN_PROGRESO
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 2 }
+
+### EN_PROGRESO → EN_REVISION
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 3 }
+
+### EN_REVISION → EN_PROGRESO (se encontraron defectos)
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 2 }
+
+### EN_REVISION → COMPLETADO (vuelve a pasar por EN_REVISION antes)
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 4 }
+
+### ERROR: mover desde COMPLETADO (400)
+PATCH {{api}}/tareas/{{nuevaTarea.response.body.id}}/mover
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "columnaDestinoId": 3 }
+
+### Bitácora de la tarea
+GET {{api}}/tareas/{{nuevaTarea.response.body.id}}/bitacora
+Authorization: Bearer {{ana}}
+
+############################ SUBTAREAS Y CHECKLIST ############################
+
+###
+# @name nuevaSubtarea
+POST {{api}}/tareas/{{nuevaTarea.response.body.id}}/subtareas
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "titulo": "Primera subtarea" }
+
+### Marcar subtarea como completada
+PUT {{api}}/tareas/{{nuevaTarea.response.body.id}}/subtareas/{{nuevaSubtarea.response.body.id}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "completada": true }
+
+###
+# @name nuevoItem
+POST {{api}}/tareas/{{nuevaTarea.response.body.id}}/subtareas/{{nuevaSubtarea.response.body.id}}/checklist
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "texto": "Paso 1" }
+
+### Marcar item del checklist
+PUT {{api}}/tareas/{{nuevaTarea.response.body.id}}/subtareas/{{nuevaSubtarea.response.body.id}}/checklist/{{nuevoItem.response.body.id}}
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "completado": true }
+
+############################ COMENTARIOS ############################
+
+### Comentar
+POST {{api}}/tareas/{{nuevaTarea.response.body.id}}/comentarios
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "texto": "Revisado, cumple el criterio de aceptación" }
+
+### Ver comentarios
+GET {{api}}/tareas/{{nuevaTarea.response.body.id}}/comentarios
+Authorization: Bearer {{ana}}
+
+############################ USUARIOS (ADMIN) ############################
+
+### Buscar usuarios (cualquier usuario autenticado)
+GET {{api}}/usuarios?buscar=lu
+Authorization: Bearer {{ana}}
+
+### Crear usuario
+POST {{api}}/usuarios
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "nombre": "Carlos Ruiz", "email": "carlos@demo.com", "password": "Clave123!" }
+
+### Detalle de usuario
+GET {{api}}/usuarios/2
+Authorization: Bearer {{admin}}
+
+### ERROR: un MIEMBRO intenta cambiar roles (403)
+PUT {{api}}/usuarios/3
+Authorization: Bearer {{ana}}
+Content-Type: application/json
+
+{ "rol": "ADMIN" }
