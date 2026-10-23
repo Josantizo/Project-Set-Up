@@ -1,0 +1,14 @@
+services:
+  db:
+    image: mysql:8
+    container_name: gestor_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gestor_tareas
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+volumes:
+  dbdata:
