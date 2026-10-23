@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import { prisma } from '../lib/prisma.js';
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -8,12 +9,22 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Token requerido' });
   }
 
+  let payload;
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
+    payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
+
+  // El rol se lee de la base para que un cambio de rol o eliminación aplique de inmediato
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: payload.id },
+    select: { id: true, rol: true, nombre: true },
+  });
+  if (!usuario) return res.status(401).json({ error: 'El usuario ya no existe' });
+
+  req.user = usuario;
+  next();
 }
 
 export function requireRole(...roles) {
