@@ -26,7 +26,21 @@ npm run dev
 
 Verifica que responda: http://localhost:3000/api/health → `{"ok":true}`
 
+Si la base está vacía (no aparecen los usuarios de ejemplo), carga los datos con `npx prisma db seed`.
+
 Usuarios de ejemplo (clave `Clave123!`): `admin@demo.com` (ADMIN), `ana@demo.com`, `luis@demo.com`, `maria@demo.com`.
+
+### Frontend
+
+Con el backend corriendo, en otra terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Abre http://localhost:5173. En desarrollo, Vite reenvía `/api` a `http://localhost:3000`; si tu backend corre en otra URL, levántalo con la variable `VITE_BACKEND_URL`.
 
 ## API y pruebas
 - Documentación de endpoints: [docs/API.md](docs/API.md)
